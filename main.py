@@ -1,7 +1,8 @@
+import sys
+
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-
 import numpy as np
 import cv2
 import io
@@ -21,6 +22,17 @@ try:
     print("Model loaded successfully")
 except Exception as e:
     print(f"Error: {e}")
+    try:
+        # Добавляем директорию YOLOv5 в путь поиска
+        yolov5_path = os.path.join(os.getcwd(), 'yolov5')  # или абсолютный путь к yolov5
+        sys.path.append(yolov5_path)
+
+        from yolov5.models.common import DetectMultiBackend  # Импорт из YOLOv5
+
+        model = DetectMultiBackend(model_path, device=device)
+    except Exception as r:
+        print(f"Error2: {r}")
+
 
 
 
