@@ -21,7 +21,7 @@ try:
     print("Model loaded successfully")
 except Exception as e:
     print(f"Error: {e}")
-    raise HTTPException(status_code=500, detail=e)
+
 
 
 # Модель данных
@@ -93,9 +93,6 @@ async def predict(file: UploadFile = File(...)):
     except Exception as e:
         print(f"Prediction error: {e}")
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}")
-
-
-
 
 
 if __name__ == "__main__":
