@@ -1,0 +1,5 @@
+
+train: ./data/BCD/train
+val: ./data/BCD/valid
+nc: 3
+names: ['Platelets', 'RBC', 'WBC']
