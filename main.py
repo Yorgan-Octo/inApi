@@ -1,5 +1,5 @@
 import sys
-
+import subprocess
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -105,6 +105,68 @@ async def predict(file: UploadFile = File(...)):
     except Exception as e:
         print(f"Prediction error: {e}")
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}")
+
+
+@app.post("/predictnew/")
+async def predict(file: UploadFile = File(...)):
+    try:
+        # Чтение изображения из загруженного файла
+        image_data = await file.read()
+        nparr = np.frombuffer(image_data, np.uint8)
+        image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+        if image is None:
+            raise HTTPException(status_code=400, detail="Invalid image format")
+
+        # Генерация уникального имени для файла
+        image_filename = f"{uuid.uuid4()}.jpg"
+        image_path = os.path.join(output_dir, image_filename)
+
+        # Сохранение изображения в папку
+        cv2.imwrite(image_path, image)
+
+        # Задаем свою директорию для сохранения
+        custom_output_dir = os.path.join(output_dir, "yolo_results")
+
+        # Запуск YOLOv5 через subprocess для предсказания
+        command = [
+            'python', 'yolov5/detect.py',
+            '--weights', model_path,
+            '--source', image_path,
+            '--conf-thres', '0.25',
+            '--project', custom_output_dir,  # Ваша директория для сохранения
+            '--name', 'result',  # Имя подпапки
+            '--save-txt', '--save-conf'
+        ]
+
+        # Запуск команды и захват её вывода
+        result = subprocess.run(command, capture_output=True, text=True)
+
+        # Логируем результат выполнения команды
+        print("Subprocess result:", result.stdout)
+        print("Subprocess error (if any):", result.stderr)
+
+        # Проверяем сохраненное изображение в папке custom_output_dir
+        annotated_image_path = os.path.join(custom_output_dir, "result", image_filename)
+
+        if not os.path.exists(annotated_image_path):
+            raise HTTPException(status_code=500, detail="Model failed to process the image")
+
+        # Чтение аннотированного изображения
+        rendered_image = cv2.imread(annotated_image_path)
+
+        # Преобразование аннотированного изображения в байтовый поток
+        _, buffer = cv2.imencode('.png', rendered_image)
+        output_buffer = io.BytesIO(buffer)
+        output_buffer.seek(0)
+
+        # Возвращаем изображение как поток
+        return StreamingResponse(output_buffer, media_type="image/png")
+
+    except Exception as e:
+        print(f"Prediction error: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}")
+
 
 
 if __name__ == "__main__":
